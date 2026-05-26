@@ -77,6 +77,9 @@ except ValueError:
 OMBRE_HOOK_URL = os.environ.get("OMBRE_HOOK_URL", "").strip()
 OMBRE_HOOK_SKIP = os.environ.get("OMBRE_HOOK_SKIP", "").strip().lower() in ("1", "true", "yes", "on")
 
+# OMBRE_PUBLIC_KEY: 前端 Memory 页面读取记忆用的 API Key
+OMBRE_PUBLIC_KEY = os.environ.get("OMBRE_PUBLIC_KEY", "ob-shenyu-luyu-2026")
+
 
 async def _fire_webhook(event: str, payload: dict) -> None:
     """
@@ -1257,6 +1260,46 @@ async def dream() -> str:
     final_text = header + "\n---\n".join(parts) + connection_hint + crystal_hint
     await _fire_webhook("dream", {"recent": len(recent), "chars": len(final_text)})
     return final_text
+
+
+# =============================================================
+# Public Memory API — for frontend Memory page (API key auth)
+# 前端 Memory 页面用，API Key 认证，无需 session cookie
+# =============================================================
+@mcp.custom_route("/api/public/memories", methods=["GET"])
+async def api_public_memories(request):
+    """Get memory buckets for frontend display. Auth via ?key= query param."""
+    from starlette.responses import JSONResponse
+    key = request.query_params.get("key", "")
+    if not key or key != OMBRE_PUBLIC_KEY:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    try:
+        all_buckets = await bucket_mgr.list_all(include_archive=False)
+        result = []
+        for b in all_buckets:
+            meta = b.get("metadata", {})
+            if meta.get("type") == "feel":
+                continue
+            if meta.get("digested", False):
+                continue
+            result.append({
+                "id": b["id"],
+                "name": meta.get("name", b["id"]),
+                "type": meta.get("type", "dynamic"),
+                "domain": meta.get("domain", []),
+                "tags": meta.get("tags", []),
+                "importance": meta.get("importance", 5),
+                "valence": meta.get("valence", 0.5),
+                "arousal": meta.get("arousal", 0.3),
+                "resolved": meta.get("resolved", False),
+                "pinned": meta.get("pinned", False),
+                "created": meta.get("created", ""),
+                "content": b.get("content", "")[:500],
+            })
+        result.sort(key=lambda x: (x.get("pinned", False), x.get("importance", 5)), reverse=True)
+        return JSONResponse(result)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 
 # =============================================================
