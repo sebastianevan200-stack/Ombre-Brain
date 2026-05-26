@@ -1,6 +1,6 @@
 """前端数据接口 - memory library"""
-from fastapi import Request
-from fastapi.responses import JSONResponse
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 
 def register_frontend_routes(app, bucket_mgr):
@@ -11,7 +11,7 @@ def register_frontend_routes(app, bucket_mgr):
         try:
             d = await req.json()
             who = d.get("who", "")
-            text = f"【日记·{who}·{d.get('date','')}】{d.get('title','无题')}\n心情：{d.get('mood','')}\n{d.get('content','')}"
+            text = "【日记·" + who + "·" + d.get("date","") + "】" + d.get("title","无题") + "\n心情：" + d.get("mood","") + "\n" + d.get("content","")
             if not d.get("content"):
                 return JSONResponse({"ok": False})
             bid = await bucket_mgr.create(content=text, tags=["日记", who, "前端"], importance=5)
@@ -24,7 +24,7 @@ def register_frontend_routes(app, bucket_mgr):
         try:
             d = await req.json()
             who = d.get("who", "")
-            text = f"【信件·{who}·{d.get('date','')}】{d.get('title','无题')}\n{d.get('content','')}"
+            text = "【信件·" + who + "·" + d.get("date","") + "】" + d.get("title","无题") + "\n" + d.get("content","")
             if not d.get("content"):
                 return JSONResponse({"ok": False})
             bid = await bucket_mgr.create(content=text, tags=["信件", who, "前端"], importance=6)
@@ -40,8 +40,8 @@ def register_frontend_routes(app, bucket_mgr):
             if not text:
                 return JSONResponse({"ok": False})
             feelings = d.get("feelings", [])
-            feel = "\n".join([f"{f.get('from','')}：{f.get('text','')}" for f in feelings])
-            full = f"【摘录·{d.get('date','')}】{text}" + (f"\n感受：\n{feel}" if feel else "")
+            feel = "\n".join([f.get("from","") + "：" + f.get("text","") for f in feelings])
+            full = "【摘录·" + d.get("date","") + "】" + text + ("\n感受：\n" + feel if feel else "")
             bid = await bucket_mgr.create(content=full, tags=["摘录", "书架", "前端"], importance=5)
             return JSONResponse({"ok": True, "id": str(bid)})
         except Exception as e:
