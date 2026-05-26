@@ -1949,58 +1949,6 @@ if __name__ == "__main__":
             expose_headers=["*"],
         )
         logger.info("CORS middleware enabled for remote transport / 已启用 CORS 中间件")
-
-    # ==================== 前端数据接口 ====================
-    from fastapi import Request as _FReq
-    from fastapi.responses import JSONResponse as _FJ
-
-    @_app.post("/api/diary")
-    async def _api_diary(req: _FReq):
-        try:
-            d = await req.json()
-            who = d.get("who","")
-            text = f"【日记·{who}·{d.get('date','')}】{d.get('title','无题')}\n心情：{d.get('mood','')}\n{d.get('content','')}"
-            if not d.get('content'):
-                return _FJ({"ok":False})
-            bid = await bucket_mgr.create(content=text, tags=["日记",who,"前端"], importance=5)
-            return _FJ({"ok":True,"id":str(bid)})
-        except Exception as e:
-            return _FJ({"ok":False,"msg":str(e)})
-
-    @_app.post("/api/letter")
-    async def _api_letter(req: _FReq):
-        try:
-            d = await req.json()
-            who = d.get("who","")
-            text = f"【信件·{who}·{d.get('date','')}】{d.get('title','无题')}\n{d.get('content','')}"
-            if not d.get('content'):
-                return _FJ({"ok":False})
-            bid = await bucket_mgr.create(content=text, tags=["信件",who,"前端"], importance=6)
-            return _FJ({"ok":True,"id":str(bid)})
-        except Exception as e:
-            return _FJ({"ok":False,"msg":str(e)})
-
-    @_app.post("/api/quote")
-    async def _api_quote(req: _FReq):
-        try:
-            d = await req.json()
-            text = d.get("text","")
-            if not text:
-                return _FJ({"ok":False})
-            feelings = d.get("feelings",[])
-            feel = "\n".join([f"{f.get('from','')}：{f.get('text','')}" for f in feelings])
-            full = f"【摘录·{d.get('date','')}】{text}" + (f"\n感受：\n{feel}" if feel else "")
-            bid = await bucket_mgr.create(content=full, tags=["摘录","书架","前端"], importance=5)
-            return _FJ({"ok":True,"id":str(bid)})
-        except Exception as e:
-            return _FJ({"ok":False,"msg":str(e)})
-
-    @_app.get("/api/ping")
-    async def _api_ping():
-        return _FJ({"ok":True,"service":"memory-library"})
-
-    # ==================== 前端数据接口结束 ====================
-
         uvicorn.run(_app, host="0.0.0.0", port=OMBRE_PORT)
     else:
         mcp.run(transport=transport)
