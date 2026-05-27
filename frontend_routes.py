@@ -59,15 +59,15 @@ async def api_memories(req: Request):
         buckets = await bucket_mgr.list_all(include_archive=False)
         result = []
         for b in buckets:
+            meta = b.get("metadata", {})
             result.append({
                 "id": b.get("id", ""),
-                "title": b.get("title") or b.get("id", "")[:8],
-                "content": b.get("content", ""),
-                "tags": b.get("tags", []),
-                "importance": b.get("importance", 5),
-                "pinned": b.get("pinned", False),
+                "title": meta.get("title") or b.get("id", "")[:8],
+                "content": (b.get("content") or "").strip(),
+                "tags": meta.get("tags") or [],
+                "importance": meta.get("importance") or 5,
+                "pinned": meta.get("pinned") or False,
             })
-        # 按重要度降序
         result.sort(key=lambda x: (x["pinned"], x["importance"]), reverse=True)
         return JSONResponse({"ok": True, "memories": result})
     except Exception as e:
