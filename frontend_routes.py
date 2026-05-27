@@ -60,9 +60,16 @@ async def api_memories(req: Request):
         result = []
         for b in buckets:
             meta = b.get("metadata", {})
+            bucket_id = b.get("id", "")
+            # name字段是标题，fallback到id前8位
+            name = meta.get("name") or ""
+            # 如果name和id一样（自动生成的），用内容第一行当标题
+            if not name or name == bucket_id:
+                first_line = (b.get("content") or "").strip().split("\n")[0]
+                name = first_line[:20] if first_line else bucket_id[:8]
             result.append({
-                "id": b.get("id", ""),
-                "title": meta.get("title") or b.get("id", "")[:8],
+                "id": bucket_id,
+                "title": name,
                 "content": (b.get("content") or "").strip(),
                 "tags": meta.get("tags") or [],
                 "importance": meta.get("importance") or 5,
