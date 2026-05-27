@@ -52,11 +52,34 @@ async def api_ping(req: Request):
     return JSONResponse({"ok": True, "service": "memory-library"})
 
 
+async def api_memories(req: Request):
+    """返回所有记忆桶，供前端记忆库页面直接读取"""
+    try:
+        bucket_mgr = req.app.state.bucket_mgr
+        buckets = await bucket_mgr.list_all(include_archive=False)
+        result = []
+        for b in buckets:
+            result.append({
+                "id": b.get("id", ""),
+                "title": b.get("title") or b.get("id", "")[:8],
+                "content": b.get("content", ""),
+                "tags": b.get("tags", []),
+                "importance": b.get("importance", 5),
+                "pinned": b.get("pinned", False),
+            })
+        # 按重要度降序
+        result.sort(key=lambda x: (x["pinned"], x["importance"]), reverse=True)
+        return JSONResponse({"ok": True, "memories": result})
+    except Exception as e:
+        return JSONResponse({"ok": False, "msg": str(e)})
+
+
 FRONTEND_ROUTES = [
     Route("/api/diary", api_diary, methods=["POST"]),
     Route("/api/letter", api_letter, methods=["POST"]),
     Route("/api/quote", api_quote, methods=["POST"]),
     Route("/api/ping", api_ping, methods=["GET"]),
+    Route("/api/memories", api_memories, methods=["GET"]),
 ]
 
 
